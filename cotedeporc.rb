@@ -1,7 +1,6 @@
 # encoding: UTF-8
 require 'rubygems'
 require 'grape'
-require 'sqlite3'
 require 'gaston'
 require 'sequel'
 require 'sequel/extensions/pagination'
@@ -13,7 +12,7 @@ Gaston.configure do |gaston|
 end
 
 # Sequel
-DB = Sequel.sqlite('quotes.db')
+DB = Sequel.connect(ENV['DATABASE_URL'] || 'sqlite://quotes.db')
 
 unless DB.table_exists?(:quotes)
   DB.create_table :quotes do
