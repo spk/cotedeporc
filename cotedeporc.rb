@@ -60,7 +60,12 @@ module Cotedeporc
       end
 
       get '/:id' do
-        Quote.first(id: params[:id])
+        @quote = Quote.first(id: params[:id])
+        if @quote
+          @quote
+        else
+          error!({error: 'not found'}, 404)
+        end
       end
 
       put '/:id' do
