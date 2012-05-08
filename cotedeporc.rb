@@ -60,7 +60,7 @@ module Cotedeporc
       end
 
       get '/:id' do
-        Quote.find(params[:id])
+        Quote.first(id: params[:id])
       end
 
       put '/:id' do
