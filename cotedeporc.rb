@@ -37,7 +37,7 @@ module Cotedeporc
     version 'v1', using: :header
 
     if Gaston.respond_to?(:http_digest) && Gaston.http_digest
-      http_digest({realm: 'Quotes Api', opaque: 'secret'}) do |username|
+      http_basic({realm: 'Quotes Api', opaque: 'secret'}) do |username|
         Gaston.http_digest[username]
       end
     end
@@ -57,6 +57,11 @@ module Cotedeporc
           total_entries_count: @quotes.pagination_record_count,
           entries: @quotes
         }
+      end
+
+      get '/random' do
+        narr = (1..Quote.count).to_a
+        @quotes = Quote[id: Quote.filter('id IN ?', narr).select(:id).map(&:id).sample]
       end
 
       get '/:id' do
@@ -80,6 +85,15 @@ module Cotedeporc
 
       post '/' do
         Quote.create(params[:quote])
+      end
+
+      delete '/:id' do
+        @quote = Quote.first(id: params[:id])
+        if @quote && @quote.delete
+          @quote
+        else
+          error!({error: "not found"}, 404)
+        end
       end
     end
 
