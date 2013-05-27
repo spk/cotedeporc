@@ -59,8 +59,9 @@ module Cotedeporc
       end
 
       get '/random' do
-        narr = (1..Quote.count).to_a
-        @quotes = Quote[id: Quote.filter('id IN ?', narr).select(:id).map(&:id).sample]
+        offset = rand(Quote.count)
+        order = [:asc, :desc].sample
+        @quote = Quote.order(Sequel.send(order, :id)).limit(1, offset).first
       end
 
       get '/:id' do
