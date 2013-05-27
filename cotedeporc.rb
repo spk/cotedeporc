@@ -30,11 +30,10 @@ end
 # Grape
 module Cotedeporc
   class API < Grape::API
-    error_format :json
     format :json
     default_format :json
 
-    version 'v1', using: :header
+    version 'v1', using: :header, vendor: 'cotedeporc'
 
     if Gaston.respond_to?(:http_digest) && Gaston.http_digest
       http_basic({realm: 'Quotes Api', opaque: 'secret'}) do |username|
