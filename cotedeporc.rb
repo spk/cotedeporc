@@ -3,6 +3,7 @@ require 'rubygems'
 require 'grape'
 require 'gaston'
 require 'sequel'
+require 'sequel/extensions/migration'
 require 'sequel/extensions/pagination'
 
 # Gaston
@@ -14,13 +15,7 @@ end
 # Sequel
 DB = Sequel.connect(ENV['DATABASE_URL'] || 'sqlite://quotes.db')
 
-unless DB.table_exists?(:quotes)
-  DB.create_table :quotes do
-    primary_key :id
-    String :topic
-    String :body, null: false
-  end
-end
+Sequel::Migrator.run(DB, "migrations")
 
 Sequel::Model.plugin :json_serializer
 class Quote < Sequel::Model(:quotes)
@@ -84,7 +79,7 @@ module Cotedeporc
       end
 
       post '/' do
-        Quote.create(params[:quote])
+        Quote.create(params[:quote].merge(created_at: Time.now))
       end
 
       delete '/:id' do
