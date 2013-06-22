@@ -1,5 +1,4 @@
 # encoding: UTF-8
-require 'rubygems'
 require 'grape'
 require 'gaston'
 require 'sequel'
@@ -36,15 +35,25 @@ module Cotedeporc
       end
     end
 
+    helpers do
+      def quotes(page = 1, per_page = 10)
+        @quotes = Quote.paginate(page, per_page)
+        @quotes = @quotes.filter(topic: params[:topic]) if params[:topic]
+        if params[:start] && params[:end]
+          @quotes = @quotes.filter('? >= created_at', params[:start]).filter('created_at <= ?', params[:end])
+        end
+        if params[:body] && params[:body].size > 2
+          @quotes = @quotes.filter(:body.like("%#{params[:body]}%"))
+        end
+        @quotes
+      end
+    end
+
     resource :quotes do
       get '/' do
         page = (params[:page] || 1).to_i
         per_page = (params[:per_page] || 10).to_i
-        @quotes = Quote.paginate(page, per_page)
-        @quotes = @quotes.filter(topic: params[:topic]) if params[:topic]
-        if params[:body] && params[:body].size > 2
-          @quotes = @quotes.filter(:body.like("%#{params[:body]}%"))
-        end
+        @quotes = quotes(page, per_page)
         {
           page: @quotes.current_page,
           page_count: @quotes.page_count,
