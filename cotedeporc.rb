@@ -39,9 +39,8 @@ module Cotedeporc
       def quotes(page = 1, per_page = 10)
         @quotes = Quote.paginate(page, per_page)
         @quotes = @quotes.filter(topic: params[:topic]) if params[:topic]
-        if params[:start] && params[:end]
-          @quotes = @quotes.filter('? >= created_at', params[:start]).filter('created_at <= ?', params[:end])
-        end
+        @quotes = @quotes.filter('created_at >= ?', params[:start]) if params[:start]
+        @quotes = @quotes.filter('created_at <= ?', params[:end]) if params[:end]
         if params[:body] && params[:body].size > 2
           @quotes = @quotes.filter(:body.like("%#{params[:body]}%"))
         end
