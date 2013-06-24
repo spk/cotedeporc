@@ -5,14 +5,20 @@ require 'sequel'
 require 'sequel/extensions/migration'
 require 'sequel/extensions/pagination'
 
+module Cotedeporc
+   def self.env
+     ENV['RACK_ENV'] || 'development'
+   end
+end
+
 # Gaston
 Gaston.configure do |gaston|
-  gaston.env = ENV['RACK_ENV']
+  gaston.env = Cotedeporc.env
   gaston.files = Dir["config/gaston/**/*.yml"]
 end
 
 # Sequel
-DB = Sequel.connect(ENV['DATABASE_URL'] || 'sqlite://quotes.db')
+DB = Sequel.connect(ENV['DATABASE_URL'] || "sqlite://quotes.#{Cotedeporc.env}.db")
 
 Sequel::Migrator.run(DB, "migrations")
 
