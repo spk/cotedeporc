@@ -25,6 +25,15 @@ Sequel::Migrator.run(DB, "migrations")
 Sequel::Model.plugin :json_serializer
 class Quote < Sequel::Model(:quotes)
   include Sequel::Dataset::Pagination
+  dataset_module do
+    def confirmed
+      filter(state: 'confirmed')
+    end
+
+    def pending
+      filter(state: 'pending')
+    end
+  end
 end
 
 # Grape
@@ -42,15 +51,14 @@ module Cotedeporc
     end
 
     helpers do
-      def quotes(page = 1, per_page = 10)
-        @quotes = Quote.paginate(page, per_page)
-        @quotes = @quotes.filter(topic: params[:topic]) if params[:topic]
-        @quotes = @quotes.filter('created_at >= ?', params[:start]) if params[:start]
-        @quotes = @quotes.filter('created_at <= ?', params[:end]) if params[:end]
+      def quotes_filters(quotes, page = 1, per_page = 10)
+        quotes = quotes.filter(topic: params[:topic]) if params[:topic]
+        quotes = quotes.filter('created_at >= ?', params[:start]) if params[:start]
+        quotes = quotes.filter('created_at <= ?', params[:end]) if params[:end]
         if params[:body] && params[:body].size > 2
-          @quotes = @quotes.filter(:body.like("%#{params[:body]}%"))
+          quotes = quotes.filter(:body.like("%#{params[:body]}%"))
         end
-        @quotes
+        quotes
       end
     end
 
@@ -58,7 +66,21 @@ module Cotedeporc
       get '/' do
         page = (params[:page] || 1).to_i
         per_page = (params[:per_page] || 10).to_i
-        @quotes = quotes(page, per_page)
+        @quotes = Quote.confirmed.paginate(page, per_page)
+        @quotes = quotes_filters(@quotes, page, per_page)
+        {
+          page: @quotes.current_page,
+          page_count: @quotes.page_count,
+          total_entries_count: @quotes.pagination_record_count,
+          entries: @quotes
+        }
+      end
+
+      get '/pending' do
+        page = (params[:page] || 1).to_i
+        per_page = (params[:per_page] || 10).to_i
+        @quotes = Quote.pending.paginate(page, per_page)
+        @quotes = quotes_filters(@quotes, page, per_page)
         {
           page: @quotes.current_page,
           page_count: @quotes.page_count,
@@ -70,7 +92,7 @@ module Cotedeporc
       get '/random' do
         offset = rand(Quote.count)
         order = [:asc, :desc].sample
-        @quote = Quote.order(Sequel.send(order, :id)).limit(1, offset).first
+        @quote = Quote.confirmed.order(Sequel.send(order, :id)).limit(1, offset).first
       end
 
       get '/:id' do
@@ -85,6 +107,16 @@ module Cotedeporc
       put '/:id' do
         @quote = Quote.filter(id: params[:id]).first
         @quote.set_fields(params[:quote], [:topic, :body])
+        if @quote.save
+          @quote
+        else
+          error!({error: "unexpected error", detail: @quote.errors}, 500)
+        end
+      end
+
+      put '/:id/confirm' do
+        @quote = Quote.filter(id: params[:id]).first
+        @quote.set_fields({:state => 'confirmed'}, [:state])
         if @quote.save
           @quote
         else
