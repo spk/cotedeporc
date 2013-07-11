@@ -20,6 +20,19 @@ describe Cotedeporc::API do
         JSON.parse(last_response.body)['entries'].must_equal []
       end
     end
+
+    describe 'GET /quotes/random' do
+      it 'returns an random quote' do
+        10.times {
+          Quote.create(topic: 'test', body: 'test', state: %w{confirmed pending}.sample)
+        }
+        Quote.first.delete
+        5.times {
+          get "/quotes/random"
+          JSON.parse(last_response.body)['json_class'].must_equal 'Quote'
+        }
+      end
+    end
     describe "GET /quotes/:id" do
       it "returns a status by id" do
         quote = Quote.create(topic: 'test', body: 'test')
