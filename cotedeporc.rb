@@ -90,7 +90,7 @@ module Cotedeporc
       end
 
       get '/random' do
-        offset = rand(Quote.count)
+        offset = rand(Quote.confirmed.count)
         order = [:asc, :desc].sample
         @quote = Quote.confirmed.order(Sequel.send(order, :id)).limit(1, offset).first
       end
