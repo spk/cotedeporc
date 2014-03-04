@@ -19,6 +19,13 @@ describe Cotedeporc::API do
         last_response.status.must_equal 200
         JSON.parse(last_response.body)['entries'].must_equal []
       end
+
+      it 'can be filtered by start and end date' do
+        Quote.create(topic: 'test', body: 'test', state: "confirmed", created_at: Time.new(2012))
+        Quote.create(topic: 'test', body: 'test', state: "confirmed", created_at: Time.new(2014))
+        get "/quotes?start=2013-01-01&end=2015-01-01"
+        JSON.parse(last_response.body)['entries'].size.must_equal 1
+      end
     end
 
     describe 'GET /quotes/random' do
@@ -41,5 +48,6 @@ describe Cotedeporc::API do
         last_response.body.must_equal quote.to_json
       end
     end
+
   end
 end
