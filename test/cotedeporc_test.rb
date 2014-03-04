@@ -29,10 +29,11 @@ describe Cotedeporc::API do
         Quote.first.delete
         5.times {
           get "/quotes/random"
-          JSON.parse(last_response.body)['json_class'].must_equal 'Quote'
+          JSON.parse(last_response.body)['topic'].must_equal 'test'
         }
       end
     end
+
     describe "GET /quotes/:id" do
       it "returns a status by id" do
         quote = Quote.create(topic: 'test', body: 'test')

@@ -19,12 +19,12 @@ end
 
 # Sequel
 DB = Sequel.connect(ENV['DATABASE_URL'] || "sqlite://quotes.#{Cotedeporc.env}.db")
+DB.extension(:pagination)
 
 Sequel::Migrator.run(DB, "migrations")
 
 Sequel::Model.plugin :json_serializer
 class Quote < Sequel::Model(:quotes)
-  include Sequel::Dataset::Pagination
   dataset_module do
     def confirmed
       filter(state: 'confirmed')
