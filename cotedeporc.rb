@@ -56,7 +56,7 @@ module Cotedeporc
         quotes = quotes.filter('created_at >= ?', params[:start]) if params[:start]
         quotes = quotes.filter('created_at <= ?', params[:end]) if params[:end]
         if params[:body] && params[:body].size > 2
-          quotes = quotes.filter(:body.like("%#{params[:body]}%"))
+          quotes = quotes.filter(Sequel.ilike(:body, "%#{params[:body]}%"))
         end
         quotes
       end
@@ -90,9 +90,11 @@ module Cotedeporc
       end
 
       get '/random' do
-        offset = rand(Quote.confirmed.count)
+        @quotes = Quote.confirmed
+        @quotes = quotes_filters(@quotes)
+        offset = rand(@quotes.count)
         order = [:asc, :desc].sample
-        @quote = Quote.confirmed.order(Sequel.send(order, :id)).limit(1, offset).first
+        @quote = @quotes.order(Sequel.send(order, :id)).limit(1, offset).first
       end
 
       get '/:id' do

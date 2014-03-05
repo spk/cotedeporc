@@ -39,6 +39,14 @@ describe Cotedeporc::API do
           JSON.parse(last_response.body)['topic'].must_equal 'test'
         }
       end
+
+      it 'returns a random filtered quote' do
+        5.times do |i|
+          Quote.create(topic: 'test', body: "test_#{i}", state: "confirmed")
+        end
+        get "/quotes/random?body=test_1"
+        JSON.parse(last_response.body)['body'].must_equal 'test_1'
+      end
     end
 
     describe "GET /quotes/:id" do
