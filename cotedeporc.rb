@@ -51,7 +51,7 @@ module Cotedeporc
     end
 
     helpers do
-      def quotes_filters(quotes, page = 1, per_page = 10)
+      def quotes_filters(quotes)
         quotes = quotes.filter(topic: params[:topic]) if params[:topic]
         quotes = quotes.filter('created_at >= ?', params[:start]) if params[:start]
         quotes = quotes.filter('created_at <= ?', params[:end]) if params[:end]
@@ -67,7 +67,7 @@ module Cotedeporc
         page = (params[:page] || 1).to_i
         per_page = (params[:per_page] || 10).to_i
         @quotes = Quote.confirmed.paginate(page, per_page)
-        @quotes = quotes_filters(@quotes, page, per_page)
+        @quotes = quotes_filters(@quotes)
         {
           page: @quotes.current_page,
           page_count: @quotes.page_count,
@@ -80,7 +80,7 @@ module Cotedeporc
         page = (params[:page] || 1).to_i
         per_page = (params[:per_page] || 10).to_i
         @quotes = Quote.pending.paginate(page, per_page)
-        @quotes = quotes_filters(@quotes, page, per_page)
+        @quotes = quotes_filters(@quotes)
         {
           page: @quotes.current_page,
           page_count: @quotes.page_count,
