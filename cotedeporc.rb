@@ -51,6 +51,19 @@ module Cotedeporc
     end
 
     helpers do
+      def paginate(collection)
+        page = Integer(params[:page] || 1)
+        per_page = Integer(params[:per_page] || 10)
+        collection.paginate(page, per_page).tap do |data|
+          header "X-Total", data.pagination_record_count
+          header "X-Total-Pages", data.page_count
+          header "X-Per-Page", per_page
+          header "X-Page", data.current_page
+          header "X-Next-Page", data.next_page
+          header "X-Prev-Page", data.prev_page
+        end
+      end
+
       def quotes_filters(quotes)
         quotes = quotes.filter(topic: params[:topic]) if params[:topic]
         quotes = quotes.filter('created_at >= ?', params[:start]) if params[:start]
@@ -64,9 +77,7 @@ module Cotedeporc
 
     resource :quotes do
       get '/' do
-        page = (params[:page] || 1).to_i
-        per_page = (params[:per_page] || 10).to_i
-        @quotes = Quote.confirmed.paginate(page, per_page)
+        @quotes = paginate(Quote.confirmed)
         @quotes = quotes_filters(@quotes)
         {
           page: @quotes.current_page,
@@ -77,9 +88,7 @@ module Cotedeporc
       end
 
       get '/pending' do
-        page = (params[:page] || 1).to_i
-        per_page = (params[:per_page] || 10).to_i
-        @quotes = Quote.pending.paginate(page, per_page)
+        @quotes = paginate(Quote.pending)
         @quotes = quotes_filters(@quotes)
         {
           page: @quotes.current_page,

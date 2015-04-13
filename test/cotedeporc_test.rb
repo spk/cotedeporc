@@ -26,6 +26,25 @@ describe Cotedeporc::API do
         get "/quotes?start=2013-01-01&end=2015-01-01"
         JSON.parse(last_response.body)['entries'].size.must_equal 1
       end
+
+      it 'have X-Page headers' do
+        11.times {
+          Quote.create(topic: 'test', body: 'test', state: "confirmed")
+        }
+        get "/quotes"
+        last_response.status.must_equal 200
+        headers = last_response.headers
+        headers['X-Total'].must_equal 11
+        headers['X-Total-Pages'].must_equal 2
+        headers['X-Per-Page'].must_equal 10
+        headers['X-Page'].must_equal 1
+        headers['X-Next-Page'].must_equal 2
+        headers['X-Prev-Page'].must_equal nil
+        get "/quotes?page=2"
+        headers = last_response.headers
+        headers['X-Next-Page'].must_equal nil
+        headers['X-Prev-Page'].must_equal 1
+      end
     end
 
     describe 'GET /quotes/random' do
