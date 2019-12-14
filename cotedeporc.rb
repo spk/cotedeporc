@@ -27,11 +27,11 @@ Sequel::Model.plugin :json_serializer
 class Quote < Sequel::Model(:quotes)
   dataset_module do
     def confirmed
-      filter(state: 'confirmed')
+      where(state: 'confirmed')
     end
 
     def pending
-      filter(state: 'pending')
+      where(state: 'pending')
     end
   end
 end
@@ -55,21 +55,21 @@ module Cotedeporc
         page = Integer(params[:page] || 1)
         per_page = Integer(params[:per_page] || 10)
         collection.paginate(page, per_page).tap do |data|
-          header "X-Total", data.pagination_record_count
-          header "X-Total-Pages", data.page_count
-          header "X-Per-Page", per_page
-          header "X-Page", data.current_page
-          header "X-Next-Page", data.next_page
-          header "X-Prev-Page", data.prev_page
+          header "X-Total", data.pagination_record_count.to_s
+          header "X-Total-Pages", data.page_count.to_s
+          header "X-Per-Page", per_page.to_s
+          header "X-Page", data.current_page.to_s
+          header "X-Next-Page", data.next_page.to_s
+          header "X-Prev-Page", data.prev_page.to_s
         end
       end
 
-      def quotes_filters(quotes)
-        quotes = quotes.filter(topic: params[:topic]) if params[:topic]
-        quotes = quotes.filter('created_at >= ?', params[:start]) if params[:start]
-        quotes = quotes.filter('created_at <= ?', params[:end]) if params[:end]
+      def quotes_wheres(quotes)
+        quotes = quotes.where(topic: params[:topic]) if params[:topic]
+        quotes = quotes.where(Sequel[:created_at] >= params[:start]) if params[:start]
+        quotes = quotes.where(Sequel[:created_at] <= params[:end]) if params[:end]
         if params[:body] && params[:body].size > 2
-          quotes = quotes.filter(Sequel.ilike(:body, "%#{params[:body]}%"))
+          quotes = quotes.where(Sequel.ilike(:body, "%#{params[:body]}%"))
         end
         quotes
       end
@@ -78,7 +78,7 @@ module Cotedeporc
     resource :quotes do
       get '/' do
         @quotes = paginate(Quote.confirmed)
-        @quotes = quotes_filters(@quotes)
+        @quotes = quotes_wheres(@quotes)
         {
           page: @quotes.current_page,
           page_count: @quotes.page_count,
@@ -89,7 +89,7 @@ module Cotedeporc
 
       get '/pending' do
         @quotes = paginate(Quote.pending)
-        @quotes = quotes_filters(@quotes)
+        @quotes = quotes_wheres(@quotes)
         {
           page: @quotes.current_page,
           page_count: @quotes.page_count,
@@ -100,7 +100,7 @@ module Cotedeporc
 
       get '/random' do
         @quotes = Quote.confirmed
-        @quotes = quotes_filters(@quotes)
+        @quotes = quotes_wheres(@quotes)
         offset = rand(@quotes.count)
         order = [:asc, :desc].sample
         @quote = @quotes.order(Sequel.send(order, :id)).limit(1, offset).first
@@ -116,7 +116,7 @@ module Cotedeporc
       end
 
       put '/:id' do
-        @quote = Quote.filter(id: params[:id]).first
+        @quote = Quote.where(id: params[:id]).first
         @quote.set_fields(params[:quote], [:topic, :body])
         if @quote.save
           @quote
@@ -126,7 +126,7 @@ module Cotedeporc
       end
 
       put '/:id/confirm' do
-        @quote = Quote.filter(id: params[:id]).first
+        @quote = Quote.where(id: params[:id]).first
         @quote.set_fields({:state => 'confirmed'}, [:state])
         if @quote.save
           @quote
@@ -148,6 +148,5 @@ module Cotedeporc
         end
       end
     end
-
   end
 end
