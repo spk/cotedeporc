@@ -1,6 +1,5 @@
-# encoding: UTF-8
-require 'grape'
-require 'gaston'
+# frozen_string_literal: true
+require 'hanami/api'
 require 'sequel'
 require 'sequel/extensions/migration'
 require 'sequel/extensions/pagination'
@@ -9,12 +8,6 @@ module Cotedeporc
    def self.env
      ENV['RACK_ENV'] || 'development'
    end
-end
-
-# Gaston
-Gaston.configure do |gaston|
-  gaston.env = Cotedeporc.env
-  gaston.files = Dir["config/gaston/**/*.yml"]
 end
 
 # Sequel
@@ -36,35 +29,25 @@ class Quote < Sequel::Model(:quotes)
   end
 end
 
-# Grape
 module Cotedeporc
-  class API < Grape::API
-    format :json
-    default_format :json
+  class API < Hanami::API
+    NOT_FOUND = { error: 'not found' }.freeze
 
-    version 'v1', using: :header, vendor: 'cotedeporc'
-
-    if Gaston.respond_to?(:http_digest) && Gaston.http_digest
-      http_basic({realm: 'Quotes Api', opaque: 'secret'}) do |username|
-        Gaston.http_digest[username]
-      end
-    end
-
-    helpers do
-      def paginate(collection)
+    class << self
+      def paginate(collection, params, headers)
         page = Integer(params[:page] || 1)
         per_page = Integer(params[:per_page] || 10)
         collection.paginate(page, per_page).tap do |data|
-          header "X-Total", data.pagination_record_count.to_s
-          header "X-Total-Pages", data.page_count.to_s
-          header "X-Per-Page", per_page.to_s
-          header "X-Page", data.current_page.to_s
-          header "X-Next-Page", data.next_page.to_s
-          header "X-Prev-Page", data.prev_page.to_s
+          headers["X-Total"] = data.pagination_record_count.to_s
+          headers["X-Total-Pages"] = data.page_count.to_s
+          headers["X-Per-Page"] = per_page.to_s
+          headers["X-Page"] = data.current_page.to_s
+          headers["X-Next-Page"] = data.next_page.to_s
+          headers["X-Prev-Page"] = data.prev_page.to_s
         end
       end
 
-      def quotes_wheres(quotes)
+      def quotes_filters(quotes, params)
         quotes = quotes.where(topic: params[:topic]) if params[:topic]
         quotes = quotes.where(Sequel[:created_at] >= params[:start]) if params[:start]
         quotes = quotes.where(Sequel[:created_at] <= params[:end]) if params[:end]
@@ -75,76 +58,93 @@ module Cotedeporc
       end
     end
 
-    resource :quotes do
-      get '/' do
-        @quotes = paginate(Quote.confirmed)
-        @quotes = quotes_wheres(@quotes)
-        {
+    scope :v1 do
+      get '/quotes' do
+        @quotes = Cotedeporc::API.paginate(Quote.confirmed, params, headers)
+        @quotes = Cotedeporc::API.quotes_filters(@quotes, params)
+        json({
           page: @quotes.current_page,
           page_count: @quotes.page_count,
           total_entries_count: @quotes.pagination_record_count,
           entries: @quotes
-        }
+        })
       end
 
-      get '/pending' do
-        @quotes = paginate(Quote.pending)
-        @quotes = quotes_wheres(@quotes)
-        {
-          page: @quotes.current_page,
-          page_count: @quotes.page_count,
-          total_entries_count: @quotes.pagination_record_count,
-          entries: @quotes
-        }
+      post '/quotes' do
+        json(Quote.create(params[:quote].merge(created_at: Time.now)))
       end
 
-      get '/random' do
-        @quotes = Quote.confirmed
-        @quotes = quotes_wheres(@quotes)
-        offset = rand(@quotes.count)
-        order = [:asc, :desc].sample
-        @quote = @quotes.order(Sequel.send(order, :id)).limit(1, offset).first
-      end
-
-      get '/:id' do
-        @quote = Quote.first(id: params[:id])
-        if @quote
-          @quote
-        else
-          error!({error: 'not found'}, 404)
+      scope :quotes do
+        get '/pending' do
+          @quotes = Cotedeporc::API.paginate(Quote.pending, params)
+          @quotes = Cotedeporc::API.quotes_filters(@quotes, params)
+          json({
+            page: @quotes.current_page,
+            page_count: @quotes.page_count,
+            total_entries_count: @quotes.pagination_record_count,
+            entries: @quotes
+          })
         end
-      end
 
-      put '/:id' do
-        @quote = Quote.where(id: params[:id]).first
-        @quote.set_fields(params[:quote], [:topic, :body])
-        if @quote.save
-          @quote
-        else
-          error!({error: "unexpected error", detail: @quote.errors}, 500)
+        get '/random' do
+          @quotes = Quote.confirmed
+          @quotes = Cotedeporc::API.quotes_filters(@quotes, params)
+          offset = rand(@quotes.count)
+          order = [:asc, :desc].sample
+          @quote = @quotes.order(Sequel.send(order, :id)).limit(1, offset).first
+          json(@quote)
         end
-      end
 
-      put '/:id/confirm' do
-        @quote = Quote.where(id: params[:id]).first
-        @quote.set_fields({:state => 'confirmed'}, [:state])
-        if @quote.save
-          @quote
-        else
-          error!({error: "unexpected error", detail: @quote.errors}, 500)
+        get '/:id' do
+          @quote = Quote.first(id: params[:id])
+          if @quote
+            json(@quote)
+          else
+            status(404)
+            json(NOT_FOUND)
+          end
         end
-      end
 
-      post '/' do
-        Quote.create(params[:quote].merge(created_at: Time.now))
-      end
+        put '/:id' do
+          @quote = Quote.where(id: params[:id]).first
+          unless @quote
+            status(404)
+            json(NOT_FOUND)
+          else
+            @quote.set_fields(params[:quote], [:topic, :body])
+            if @quote.save
+              json(@quote)
+            else
+              status(422)
+              json({error: "unexpected error", detail: @quote.errors})
+            end
+          end
+        end
 
-      delete '/:id' do
-        @quote = Quote.first(id: params[:id])
-        if @quote && @quote.delete
-          @quote
-        else
-          error!({error: "not found"}, 404)
+        put '/:id/confirm' do
+          @quote = Quote.where(id: params[:id]).first
+          unless @quote
+            status(404)
+            json(NOT_FOUND)
+          else
+            @quote.set_fields({:state => 'confirmed'}, [:state])
+            if @quote.save
+              json(@quote)
+            else
+              status(422)
+              json({error: "unexpected error", detail: @quote.errors})
+            end
+          end
+        end
+
+        delete '/:id' do
+          @quote = Quote.first(id: params[:id])
+          if @quote && @quote.delete
+            json(@quote)
+          else
+            status(404)
+            json(NOT_FOUND)
+          end
         end
       end
     end

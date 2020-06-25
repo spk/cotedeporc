@@ -12,14 +12,14 @@ bundle exec rackup
 ### Add a quote
 
 ```
-curl -v -XPOST http://127.0.0.1:9292/quotes \
+curl -v -XPOST http://127.0.0.1:9292/v1/quotes \
   -d 'quote[topic]=youpi' -d 'quote[body]=youpi !!!'
 ```
 
 ### List quotes
 
 ```
-curl -v http://127.0.0.1:9292/quotes
+curl -v http://127.0.0.1:9292/v1/quotes
 ```
 
 ## License

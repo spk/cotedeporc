@@ -1,3 +1,3 @@
-require 'rack'
+# frozen_string_literal: true
 require File.join(File.dirname(__FILE__), 'cotedeporc')
-run Cotedeporc::API
+run Cotedeporc::API.new
