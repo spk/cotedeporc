@@ -1,6 +1,6 @@
 # cotedeporc
 
-## Quotes api with Grape and Sequel
+## Quotes api with Hanami and Sequel
 
 ### Run
 
