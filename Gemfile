@@ -1,8 +1,9 @@
 source 'https://rubygems.org'
 
-gem 'hanami-api', '= 0.1.0'
-gem 'hanami-router', '= 2.0.0.alpha2'
+gem 'hanami-api', '~>0.2'
+gem 'hanami-router', '~>2.0'
 gem 'sequel'
+gem 'puma'
 gem 'sqlite3', group: [:development, :test]
 gem 'pg', group: [:production]
 
