@@ -11,5 +11,5 @@ group :development, :test do
   gem 'rack-test'
   gem 'minitest'
   gem 'rake'
-  gem 'pry'
+  gem 'debug', '>= 1.0.0'
 end
